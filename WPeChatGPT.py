@@ -15,29 +15,43 @@ path = os.path.dirname(os.path.abspath(__file__)) + "\\Auto-WPeGPT_WPeace\\"
 #path = os.path.dirname(os.path.abspath(__file__)) + "/Auto-WPeGPT_WPeace/"
 sys.path.append(path)
 import Auto_WPeGPT
-
 # Whether to use Chinese explanation code.
 ZH_CN = True
-# Plugin information, you can change the model here.
-PLUGIN_NAME = 'WPeChatGPT'
-PROD_NAME = 'ChatGPT'
-MODEL = 'gpt-4'
-# Set your API key here, or put in in the OPENAI_API_KEY environment variable.
-openai_api_key = "ENTER_OPEN_API_KEY_HERE"
+
+# Use ChatGPT
+PLUGIN_NAME = 'WPeChat-GPT'
+# Use DeepSeek
+#PLUGIN_NAME = 'WPeChat-DeepSeek'
+
+# Set your API key here, or put in in the model_api_key environment variable.
+model_api_key = "ENTER_API_KEY_HERE"
 
 # Set your forward-proxy if necessary. (e.g. Clash = http://127.0.0.1:7890)
 proxy = ""
-# Set reverse-proxy URL if you need. (e.g. Azure OpenAI)
+# Set reverse-proxy-URL or custom-api-URL if you need. (e.g. Azure OpenAI)
 proxy_address = ""
+
+
+# Plugin information, you can change the model here.
+if PLUGIN_NAME == "WPeChat-GPT":
+    PROD_NAME = 'ChatGPT'
+    MODEL = 'gpt-4'
+    print("WPeChatGPT is using ChatGPT.")
+elif PLUGIN_NAME == "WPeChat-DeepSeek":
+    PROD_NAME = 'DeepSeek'
+    MODEL = 'deepseek-chat'
+    print("WPeChatGPT is using DeepSeek.")
 # Create openai client (python openai package version > 1.2)
-if proxy:
-    client = openai.OpenAI(http_client=httpx.Client(proxies=proxy, transport=httpx.HTTPTransport(local_address="0.0.0.0")), api_key=openai_api_key)
+if PROD_NAME == "DeepSeek":
+    client = openai.OpenAI(base_url="https://api.deepseek.com", api_key=model_api_key)
+elif proxy:
+    client = openai.OpenAI(http_client=httpx.Client(proxies=proxy, transport=httpx.HTTPTransport(local_address="0.0.0.0")), api_key=model_api_key)
     print("WPeChatGPT has appointed the forward-proxy.")
 elif proxy_address:
-    client = openai.OpenAI(base_url=proxy_address, api_key=openai_api_key)
+    client = openai.OpenAI(base_url=proxy_address, api_key=model_api_key)
     print("WPeChatGPT has appointed the reverse-proxy.")
 else:
-    client = openai.OpenAI(api_key=openai_api_key)
+    client = openai.OpenAI(api_key=model_api_key)
 
 
 # WPeChatGPT 分析解释函数
@@ -47,7 +61,7 @@ class ExplainHandler(idaapi.action_handler_t):
 
     def activate(self, ctx):
         funcComment = getFuncComment(idaapi.get_screen_ea())
-        if "---GPT_START---" in funcComment:
+        if "---WPeChat_START---" in funcComment:
             if ZH_CN:
                 print("当前函数已经完成过 %s:Explain 分析，请查看注释或删除注释重新分析。@WPeace"%(PLUGIN_NAME))
             else:
@@ -57,13 +71,13 @@ class ExplainHandler(idaapi.action_handler_t):
         v = ida_hexrays.get_widget_vdui(ctx.widget)
         # 中文
         if ZH_CN:
-            query_model_async("下面是一个C语言伪代码函数，分别分析该函数的预期目的、参数的作用、详细功能，最后取一个新的函数名字。（用简体中文回答我，并且回答开始前加上'---GPT_START---'字符串结束后加上'---GPT_END---'字符串）\n"
+            query_model_async("下面是一个C语言伪代码函数，分别分析该函数的预期目的、参数的作用、详细功能，最后取一个新的函数名字。（用简体中文回答我，并且回答开始前加上'---WPeChat_START---'字符串结束后加上'---WPeChat_END---'字符串）\n"
                 + str(decompiler_output),
                 functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=0),
                 0)
         # English
         else:
-            query_model_async("Analyze the following C language pseudo-code function, respectively speculate on the use environment, expected purpose, and detailed function of the function, and finally choose a new name for this function. (add '---GPT_START---' string before the beginning of the answer and add '---GPT_END---' string after the end)\n" + str(decompiler_output), functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=0), 0)
+            query_model_async("Analyze the following C language pseudo-code function, respectively speculate on the use environment, expected purpose, and detailed function of the function, and finally choose a new name for this function. (add '---WPeChat_START---' string before the beginning of the answer and add '---WPeChat_END---' string after the end)\n" + str(decompiler_output), functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=0), 0)
         return 1
 
     def update(self, ctx):
@@ -101,7 +115,7 @@ class PythonHandler(idaapi.action_handler_t):
         lastAddr = idc.prev_head(idc.get_func_attr(idaapi.get_screen_ea(), idc.FUNCATTR_END))
         # 获取对应注释
         addrComment = getAddrComment(lastAddr)
-        if "---GPT_Python_START---" in str(addrComment):
+        if "---WPeChat_Python_START---" in str(addrComment):
             if ZH_CN:
                 print("当前函数已经完成过 %s:Python 分析，请查看注释或删除注释重新分析。@WPeace"%(PLUGIN_NAME))
             else:
@@ -111,13 +125,13 @@ class PythonHandler(idaapi.action_handler_t):
         v = ida_hexrays.get_widget_vdui(ctx.widget)
         # 中文
         if ZH_CN:
-            query_model_async("分析下面的C语言伪代码并用python3代码进行还原。（回答开始前加上'---GPT_Python_START---'字符串结束后加上'---GPT_Python_END---'字符串）\n"
+            query_model_async("分析下面的C语言伪代码并用python3代码进行还原。（回答开始前加上'---WPeChat_Python_START---'字符串结束后加上'---WPeChat_Python_END---'字符串）\n"
                 + str(decompiler_output),
                 functools.partial(comment_callback, address=lastAddr, view=v, cmtFlag=1, printFlag=1),
                 0)
         # English
         else:
-            query_model_async("Analyze the following C language pseudocode and restore it with python3 code. (Add '---GPT_Python_START---' string before the beginning of the answer and add '---GPT_Python_END---' string after the end)\n"
+            query_model_async("Analyze the following C language pseudocode and restore it with python3 code. (Add '---WPeChat_Python_START---' string before the beginning of the answer and add '---WPeChat_Python_END---' string after the end)\n"
                               + str(decompiler_output),
                               functools.partial(comment_callback, address=lastAddr, view=v, cmtFlag=1, printFlag=1),
                               0)
@@ -134,7 +148,7 @@ class FindVulnHandler(idaapi.action_handler_t):
 
     def activate(self, ctx):
         funcComment = getFuncComment(idaapi.get_screen_ea())
-        if "---GPT_VulnFinder_START---" in funcComment:
+        if "---WPeChat_VulnFinder_START---" in funcComment:
             if ZH_CN:
                 print("当前函数已经完成过 %s:VulnFinder 分析，请查看注释或删除注释重新分析。@WPeace"%(PLUGIN_NAME))
             else:
@@ -144,13 +158,13 @@ class FindVulnHandler(idaapi.action_handler_t):
         v = ida_hexrays.get_widget_vdui(ctx.widget)
         # 中文
         if ZH_CN:
-            query_model_async("查找下面这个C语言伪代码函数的漏洞并提出可能的利用方法。（用简体中文回答我，并且回答开始前加上'---GPT_VulnFinder_START---'字符串结束后加上'---GPT_VulnFinder_END---'字符串）\n"
+            query_model_async("查找下面这个C语言伪代码函数的漏洞并提出可能的利用方法。（用简体中文回答我，并且回答开始前加上'---WPeChat_VulnFinder_START---'字符串结束后加上'---WPeChat_VulnFinder_END---'字符串）\n"
                 + str(decompiler_output),
                 functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=2),
                 0)
         # English
         else:
-            query_model_async("Find the following C function vulnerabilty and suggest a possible way to exploit it.(Use English to answer me, and answer before plus '---GPT_VulnFinder_START---' the end of the string plus '---GPT_VulnFinder_END---' string)\n"
+            query_model_async("Find the following C function vulnerabilty and suggest a possible way to exploit it.(Use English to answer me, and answer before plus '---WPeChat_VulnFinder_START---' the end of the string plus '---WPeChat_VulnFinder_END---' string)\n"
                               + str(decompiler_output),
                               functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=2),
                               0)
@@ -167,7 +181,7 @@ class expCreateHandler(idaapi.action_handler_t):
 
     def activate(self, ctx):
         funcComment = getFuncComment(idaapi.get_screen_ea())
-        if "---GPT_VulnPython_START---" in funcComment:
+        if "---WPeChat_VulnPython_START---" in funcComment:
             if ZH_CN:
                 print("当前函数已经完成过 %s:ExpCreater 分析，请查看注释或删除注释重新分析。@WPeace"%(PLUGIN_NAME))
             else:
@@ -177,13 +191,13 @@ class expCreateHandler(idaapi.action_handler_t):
         v = ida_hexrays.get_widget_vdui(ctx.widget)
         # 中文
         if ZH_CN:
-            query_model_async("使用Python构造代码来利用下面函数中的漏洞。（用简体中文回答我，并且回答开始前加上'---GPT_VulnPython_START---'字符串结束后加上'---GPT_VulnPython_END---'字符串）\n"
+            query_model_async("使用Python构造代码来利用下面函数中的漏洞。（用简体中文回答我，并且回答开始前加上'---WPeChat_VulnPython_START---'字符串结束后加上'---WPeChat_VulnPython_END---'字符串）\n"
                 + str(decompiler_output),
                 functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=3),
                 0)
         # English
         else:
-            query_model_async("Use Python to construct code to exploit the vulnerabilities in the following functions.(Answer before plus '---GPT_VulnPython_START---' the end of the string plus '---GPT_VulnPython_END---' string)\n"
+            query_model_async("Use Python to construct code to exploit the vulnerabilities in the following functions.(Answer before plus '---WPeChat_VulnPython_START---' the end of the string plus '---WPeChat_VulnPython_END---' string)\n"
                               + str(decompiler_output),
                               functools.partial(comment_callback, address=idaapi.get_screen_ea(), view=v, cmtFlag=0, printFlag=3),
                               0)
@@ -545,7 +559,7 @@ class myplugin_WPeChatGPT(idaapi.plugin_t):
             self.menu = ContextMenuHooks()
             self.menu.hook()
             print("Auto-WPeGPT v0.2 is ready.")
-            print("%s v2.5 works fine! :)@WPeace\n"%(PLUGIN_NAME))
+            print("%s v2.6 works fine! :)@WPeace\n"%(PLUGIN_NAME))
         else:
             # create Auto-WPeGPT action
             autoWPeGPT_action = idaapi.action_desc_t(self.autoWPeGPT_action_name,
@@ -605,7 +619,7 @@ class myplugin_WPeChatGPT(idaapi.plugin_t):
             self.menu = ContextMenuHooks()
             self.menu.hook()
             print("Auto-WPeGPT v0.2 is ready.")
-            print("%s v2.5 works fine! :)@WPeace\n"%(PLUGIN_NAME))
+            print("%s v2.6 works fine! :)@WPeace\n"%(PLUGIN_NAME))
         return idaapi.PLUGIN_KEEP
 
     def run(self, arg):
@@ -624,9 +638,10 @@ class myplugin_WPeChatGPT(idaapi.plugin_t):
 
 
 def PLUGIN_ENTRY():
-    if openai.api_key == "ENTER_OPEN_API_KEY_HERE":
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        if not openai.api_key:
-            print("未找到 API_KEY，请在脚本中填写 openai.api_key! :(@WPeace")
-            raise ValueError("No valid OpenAI API key found")
+    global model_api_key
+    if model_api_key == "ENTER_API_KEY_HERE":
+        model_api_key = os.getenv("model_api_key")
+        if not model_api_key:
+            print("未找到 API_KEY，请在脚本中填写 model_api_key! :(@WPeace")
+            raise ValueError("No valid OpenAI API key found!")
     return type(f"myplugin_{PLUGIN_NAME}", (myplugin_WPeChatGPT, ), dict())()
