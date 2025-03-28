@@ -25,7 +25,7 @@ ChatGPT's analysis results **for reference only**, otherwise we analysts would b
 |2.3|2023-04-23|Add the **Auto-WPeGPT v0.1** to support automatic analysis of binary files.<br>(Package *anytree* needs to be added from this version, use *requirements.txt* or *pip install anytree*)|
 |2.4|2023-11-10|1. Changed some display details.<br>2. Update **Auto-WPeGPT v0.2**.|
 |2.5|2024-08-07|1. Add support for other models, you can set this using the *MODEL* variable. @tpsnt<br>2. Support for the new version of the python openai package. (Need to update your openai package)|
-|2.6|2025-02-17|Add support for DeepSeek, you need to set the variable *PLUGIN_NAME* to WPeChat-DeepSeek and fill the API KEY into variable *model_api_key*.|
+|2.6|2025-02-17|Add support for DeepSeek, you need to set the variable *PLUGIN_NAME* to WPeChat-DeepSeek and fill the API KEY into variable *model_api_key*.<br>(The default model is DeepSeek-V3. If you want to use the R1 model, modify variable **MODEL** = *'deepseek-reasoner'*.)|
 ## Install
 1. Run the following command to install the required packages.
 ```
